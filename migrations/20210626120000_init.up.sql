@@ -1,0 +1,35 @@
+CREATE TABLE IF NOT EXISTS customers (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS special_offers (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  discount DECIMAL(5,2) CHECK (discount<=100.00 and discount>0),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS vouchers(
+  id SERIAL PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  customer_id SERIAL NOT NULL,
+  special_offer_id SERIAL NOT NULL,
+  expiry_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  used_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  CONSTRAINT vouchers_customer_id
+        FOREIGN KEY (customer_id)
+        REFERENCES customers(id),
+  CONSTRAINT vouchers_special_offer_id
+        FOREIGN KEY (special_offer_id)
+        REFERENCES special_offers(id)
+);
+
+CREATE INDEX idx_voucher_code_key on vouchers(code);
+CREATE INDEX idx_customer_email_key on customers(email);

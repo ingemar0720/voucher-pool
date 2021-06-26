@@ -1,0 +1,42 @@
+version: '3.6'
+services:
+  db:
+    image: postgres:12.4-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=mysecretpassword
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    restart: always
+    networks:
+      - voucher_network
+  go:
+    depends_on:
+      - db
+      - migrate
+    image: golang:1.16.0
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/go/src/voucher_service
+    working_dir: /go/src/voucher_service
+    command: go run cmd/main.go
+    networks:
+      - voucher_network
+  migrate:
+    depends_on:
+      - db
+    image: migrate/migrate
+    volumes:
+      - ./migrations:/migrations
+    command: ["-path", "/migrations", "-database",  "postgres://user:mysecretpassword@db:5432/postgres?sslmode=disable", "up"]
+    links:
+        - db
+    networks:
+      - voucher_network
+volumes:
+  db_data:
+networks:
+  voucher_network:
+    name: voucher_network
