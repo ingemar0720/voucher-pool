@@ -22,6 +22,6 @@ func main() {
 	defer cancel()
 	srv := voucher.VoucherSrv{DB: db, Ctx: ctx}
 	r := chi.NewRouter()
-	r.Get("/vouchers", srv.VoucherHanlder)
+	r.Post("/vouchers", srv.VoucherHanlder)
 	log.Fatal(http.ListenAndServe(":5000", r))
 }
