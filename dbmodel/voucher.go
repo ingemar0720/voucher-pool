@@ -24,7 +24,7 @@ type DBModelVoucher struct {
 }
 
 func ValidateVoucher(ctx context.Context, email, code string, db *sqlx.DB) (sql.NullTime, error) {
-	rows, err := db.QueryContext(ctx, "SELECT vo.used_at vo.expired_at FROM customers cus inner JOIN vouchers vo ON cus.id=vo.customer_id WHERE cus.email=$1 AND vo.code=$2", email, code)
+	rows, err := db.QueryContext(ctx, "SELECT vo.used_at, vo.expired_at FROM customers cus inner JOIN vouchers vo ON cus.id=vo.customer_id WHERE cus.email=$1 AND vo.code=$2", email, code)
 	if err != nil {
 		return sql.NullTime{}, errors.Wrapf(err, "fail to query used_at from table vouchers")
 	}

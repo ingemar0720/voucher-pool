@@ -115,7 +115,7 @@ func (suite *TestSuite) TestValidateHanlder() {
 	if err != nil {
 		assert.FailNow(suite.T(), err.Error())
 	}
-	_, err = tx.Exec("INSERT INTO vouchers (code, customer_id, special_offer_id, expired_at) VALUES ($1, $2, $3, $4)", "abc", 1, 1, time.Date(2021, time.June, 1, 0, 0, 0, 0, time.Local))
+	_, err = tx.Exec("INSERT INTO vouchers (code, customer_id, special_offer_id, expired_at) VALUES ($1, $2, $3, $4)", "abc", 1, 1, time.Now().Add(24*time.Hour))
 	if err != nil {
 		assert.FailNow(suite.T(), err.Error())
 	}
@@ -165,7 +165,7 @@ func (suite *TestSuite) TestGenerateHandler() {
 	if err != nil {
 		assert.FailNow(suite.T(), err.Error())
 	}
-	_, err = tx.Exec("INSERT INTO vouchers (code, customer_id, special_offer_id, expired_at) VALUES ($1, $2, $3, $4)", "abc", 1, 1, time.Date(2021, time.June, 1, 0, 0, 0, 0, time.Local))
+	_, err = tx.Exec("INSERT INTO vouchers (code, customer_id, special_offer_id, expired_at) VALUES ($1, $2, $3, $4)", "abc", 1, 1, time.Now().Add(24*time.Hour))
 	if err != nil {
 		assert.FailNow(suite.T(), err.Error())
 	}
@@ -206,11 +206,11 @@ func (suite *TestSuite) TestGetValidVouchers() {
 		assert.FailNow(suite.T(), err.Error())
 	}
 	// insert 2 voucher records with same customer ID but different offer ID, only the second one is not redeemed
-	_, err = tx.Exec("INSERT INTO vouchers (code, customer_id, special_offer_id, used_at, expired_at) VALUES ($1, $2, $3, $4, $5)", "abc", 1, 1, time.Date(2021, time.May, 1, 0, 0, 0, 0, time.Local), time.Date(2021, time.August, 1, 0, 0, 0, 0, time.Local))
+	_, err = tx.Exec("INSERT INTO vouchers (code, customer_id, special_offer_id, used_at, expired_at) VALUES ($1, $2, $3, $4, $5)", "abc", 1, 1, time.Date(2021, time.May, 1, 0, 0, 0, 0, time.Local), time.Now().Add(24*time.Hour))
 	if err != nil {
 		assert.FailNow(suite.T(), err.Error())
 	}
-	_, err = tx.Exec("INSERT INTO vouchers (code, customer_id, special_offer_id, expired_at) VALUES ($1, $2, $3, $4)", "def", 1, 2, time.Date(2021, time.September, 1, 0, 0, 0, 0, time.Local))
+	_, err = tx.Exec("INSERT INTO vouchers (code, customer_id, special_offer_id, expired_at) VALUES ($1, $2, $3, $4)", "def", 1, 2, time.Now().Add(24*time.Hour))
 	if err != nil {
 		assert.FailNow(suite.T(), err.Error())
 	}
