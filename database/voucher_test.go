@@ -226,7 +226,7 @@ func TestGenerateVoucher(t *testing.T) {
 			} else {
 				mock.ExpectExec("INSERT INTO vouchers (.+) VALUES (.+)").WithArgs(tt.givenVoucherCode, 1, 1, tt.givenExpiry, sqlmock.AnyArg()).WillReturnError(errors.New("error"))
 			}
-			if !tt.wantUpsertOfferErr || !tt.wantInsertVoucherErr {
+			if tt.wantUpsertOfferErr || tt.wantInsertVoucherErr {
 				mock.ExpectRollback()
 			} else {
 				mock.ExpectCommit()
@@ -240,6 +240,79 @@ func TestGenerateVoucher(t *testing.T) {
 			}
 			if tt.wantUpsertOfferErr {
 				assert.NotNil(t, err)
+			}
+			if !tt.wantQueryCustomerErr && !tt.wantUpsertOfferErr && !tt.wantInsertVoucherErr {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
+
+func TestGetVouchers(t *testing.T) {
+	db, mock := setupSQLMock(t)
+	defer db.Close()
+	fixtureEmail := "test@gmail.com"
+	fixtureCode := []string{"abcd", "defg"}
+	fixtureOfferName := []string{"apple_store", "7-11"}
+	tests := []struct {
+		name                 string
+		givenEmail           string
+		wantVoucerCodes      []string
+		wantOffNames         []string
+		wantQueryCustomerErr bool
+		wantQueryVoucherErr  bool
+	}{
+		{
+			name:                 "get valid vouchers successfully",
+			givenEmail:           fixtureEmail,
+			wantVoucerCodes:      fixtureCode,
+			wantOffNames:         fixtureOfferName,
+			wantQueryCustomerErr: false,
+			wantQueryVoucherErr:  false,
+		},
+		{
+			name:                 "fail to query customer",
+			givenEmail:           fixtureEmail,
+			wantVoucerCodes:      []string{},
+			wantOffNames:         []string{},
+			wantQueryCustomerErr: true,
+			wantQueryVoucherErr:  false,
+		},
+		{
+			name:                 "fail to query voucher",
+			givenEmail:           fixtureEmail,
+			wantVoucerCodes:      []string{},
+			wantOffNames:         []string{},
+			wantQueryCustomerErr: false,
+			wantQueryVoucherErr:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !tt.wantQueryCustomerErr {
+				mock.ExpectQuery("SELECT (.+) FROM customers WHERE (.+)").WithArgs(tt.givenEmail).WillReturnRows(sqlmock.NewRows([]string{"email"}).AddRow(1))
+			} else {
+				mock.ExpectQuery("SELECT (.+) FROM customers WHERE (.+)").WithArgs(tt.givenEmail).WillReturnError(errors.New("error"))
+			}
+
+			if !tt.wantQueryVoucherErr {
+				mock.ExpectQuery("SELECT (.+) FROM vouchers AS vo INNER JOIN special_offers AS so ON vo.special_offer_id=so.id WHERE (.+)").WithArgs(1).WillReturnRows(sqlmock.NewRows([]string{"code", "name"}).AddRow("abcd", "apple_store").AddRow("defg", "7-11"))
+			} else {
+				mock.ExpectQuery("SELECT (.+) FROM vouchers AS vo INNER JOIN special_offers AS so ON vo.special_offer_id=so.id WHERE (.+)").WithArgs(1).WillReturnError(errors.New("error"))
+			}
+
+			got, got1, err := GetVouchers(context.Background(), tt.givenEmail, sqlx.NewDb(db, "sqlmock"))
+
+			if !tt.wantQueryCustomerErr && !tt.wantQueryVoucherErr {
+				assert.Nil(t, err)
+			} else {
+				assert.NotNil(t, err)
+			}
+			if !reflect.DeepEqual(got, tt.wantVoucerCodes) {
+				t.Errorf("GetVouchers() got = %v, want %v", got, tt.wantVoucerCodes)
+			}
+			if !reflect.DeepEqual(got1, tt.wantOffNames) {
+				t.Errorf("GetVouchers() got1 = %v, want %v", got1, tt.wantOffNames)
 			}
 		})
 	}
