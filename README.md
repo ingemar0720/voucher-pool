@@ -6,9 +6,9 @@ The repo is to create a voucher pool backend service can be used by customers to
 
 ### Functionalities
 
-- given customer email, special offer name, specail offer discount and voucher expiry, the generate API shall generate unique special offer and return associated unique voucher code.
-- given a unique voucher code and user email, the validate API shall validates the voucher code. In case it is valid, return the Percentage Discount and set the date of usage to now.
-- given a customer email, the list API shall return all its valid voucher code with the Name of the speical offer
+- given customer `email`, special offer `name`, specail offer `discount` and voucher `expiry`, the generate API shall generate unique `special offer` and return associated unique voucher `code`.
+- given a unique voucher `code` and customer `email`, the validate API shall validates the voucher `code`. In case it is valid, return the percentage `discount` and set the `used_at` to now.
+- given a customer `email`, the list API shall return all its valid voucher `code` with the `name` of the speical offer
 
 ### API
 
@@ -50,10 +50,13 @@ The repo is to create a voucher pool backend service can be used by customers to
 
 - Choose postgres as the problem statement has a couple of stable relationships and schema seems to be fixed.
 - Use integration test in service/voucer_test.go as it contains most of business logic. It's better to use real DB to test.
+- To simplify the use case, create endpoint to generate voucher on demand, alternatively could create a cronjob to automate the voucher generation and sent it to customer.
+- To simplify the use case, upsert `discount` against `name` in `special offer` table. So each `name` of offer will only have 1 `discount`. The voucher generated latter with the same offer name will overwrite previous one.
 
 ### Something to be improved
 
 - Add DB connection management and retry.
-- Pregenerate voucher code and put into memory cache. If the traffic is too high, we don't need to spend compute on random code generation.
-- Migrate used voucher record into differnt table to reduce the future query effort. Can also do a regular cleanup for that specific table to reduce storage cost.
+- Pre-generate voucher code and put into memory cache. If the traffic is too high, we don't need to spend compute on random code generation.
+- Migrate redeemed voucher record into differnt table to reduce the query cost. Can also do a regular cleanup for that specific table to reduce storage cost.
 - Review error handling of database operation, current code use some customised error msg and shall be refactored.
+- Implement a cronjob to generate the voucher automatically and send notification to customer. To do this, we could use a message queue to store notification and send out separately to reduce system load.
