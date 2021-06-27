@@ -72,7 +72,6 @@ func (srv *VoucherSrv) ValidateHanlder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	t, err := dbmodel.ValidateVoucher(srv.Ctx, vr.Email, vr.Code, srv.DB)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -123,7 +122,7 @@ func (srv *VoucherSrv) GenerateHanlder(w http.ResponseWriter, r *http.Request) {
 
 	//generate code
 	code := RandStringBytes(8)
-	if err := dbmodel.GenerateVoucher(r.Context(), gr.Email, gr.OfferName, code, gr.Expiry, gr.Discount, srv.DB); err != nil {
+	if err := dbmodel.GenerateVoucher(srv.Ctx, gr.Email, gr.OfferName, code, gr.Expiry, gr.Discount, srv.DB); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -157,7 +156,7 @@ func (srv *VoucherSrv) GetValidVouchers(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	codes, offerNames, err := dbmodel.GetVouchers(r.Context(), lr.Email, srv.DB)
+	codes, offerNames, err := dbmodel.GetVouchers(srv.Ctx, lr.Email, srv.DB)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

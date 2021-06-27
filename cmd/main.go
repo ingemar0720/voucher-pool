@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	voucher "github.com/ingemar0720/voucher-pool/service"
 	"github.com/pkg/errors"
 )
@@ -22,6 +24,10 @@ func main() {
 	defer cancel()
 	srv := voucher.VoucherSrv{DB: db, Ctx: ctx}
 	r := chi.NewRouter()
+
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(middleware.Logger)
 	r.Post("/vouchers/validate", srv.ValidateHanlder)
 	r.Post("/vouchers/generate", srv.GenerateHanlder)
 	r.Get("/vouchers", srv.GetValidVouchers)
