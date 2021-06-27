@@ -9,7 +9,7 @@ import (
 	"net/mail"
 	"time"
 
-	"github.com/ingemar0720/voucher-pool/database"
+	"github.com/ingemar0720/voucher-pool/dbmodel"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -51,7 +51,7 @@ type GetResponse struct {
 }
 
 func New() (*sqlx.DB, error) {
-	db, err := sqlx.Connect("postgres", "host=db user=user dbname=postgres password=mysecretpassword sslmode=disable")
+	db, err := sqlx.Connect("postgres", "postgres://user:mysecretpassword@127.0.0.1:5432/postgres?sslmode=disable")
 	if err != nil {
 		return &sqlx.DB{}, fmt.Errorf("fail to connect to db, error: %v", err)
 	}
@@ -73,7 +73,7 @@ func (srv *VoucherSrv) ValidateHanlder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, err := database.ValidateVoucher(srv.Ctx, vr.Email, vr.Code, srv.DB)
+	t, err := dbmodel.ValidateVoucher(srv.Ctx, vr.Email, vr.Code, srv.DB)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -83,7 +83,7 @@ func (srv *VoucherSrv) ValidateHanlder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "this voucher has been redeemed", http.StatusBadRequest)
 		return
 	} else {
-		discount, err := database.SetVoucherUsageAndGetDiscount(srv.Ctx, vr.Code, srv.DB)
+		discount, err := dbmodel.SetVoucherUsageAndGetDiscount(srv.Ctx, vr.Code, srv.DB)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -123,7 +123,7 @@ func (srv *VoucherSrv) GenerateHanlder(w http.ResponseWriter, r *http.Request) {
 
 	//generate code
 	code := RandStringBytes(8)
-	if err := database.GenerateVoucher(r.Context(), gr.Email, gr.OfferName, code, gr.Expiry, gr.Discount, srv.DB); err != nil {
+	if err := dbmodel.GenerateVoucher(r.Context(), gr.Email, gr.OfferName, code, gr.Expiry, gr.Discount, srv.DB); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -157,7 +157,7 @@ func (srv *VoucherSrv) GetValidVouchers(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	codes, offerNames, err := database.GetVouchers(r.Context(), lr.Email, srv.DB)
+	codes, offerNames, err := dbmodel.GetVouchers(r.Context(), lr.Email, srv.DB)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

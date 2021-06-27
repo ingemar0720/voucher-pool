@@ -14,7 +14,7 @@ services:
   go:
     depends_on:
       - db
-      - migrate
+      - dbmigrate
     image: golang:1.16.0
     ports:
       - "5000:5000"
@@ -24,14 +24,29 @@ services:
     command: go run cmd/main.go
     networks:
       - voucher_network
-  migrate:
-    depends_on:
-      - db
-    image: migrate/migrate
+  dbmigrate:
+    image: "choonkeat/dbmigrate"
+    environment:
+      - DATABASE_URL=postgres://user:mysecretpassword@db:5432/postgres?sslmode=disable
+      - DATABASE_DRIVER=postgres
     volumes:
-      - ./migrations:/migrations
-    command: ["-path", "/migrations", "-database",  "postgres://user:mysecretpassword@db:5432/postgres?sslmode=disable", "up"]
-    links:
+      - .:/migrations
+    working_dir: /migrations
+    command: ${DBMIGRATE_CMD:--up -server-ready 60s -create-db}
+    depends_on:
+        - db
+    networks:
+      - voucher_network
+  dbmigratetest:
+    image: "choonkeat/dbmigrate"
+    environment:
+      - DATABASE_URL=postgres://user:mysecretpassword@db:5432/postgres_test?sslmode=disable
+      - DATABASE_DRIVER=postgres
+    volumes:
+      - .:/migrations
+    working_dir: /migrations
+    command: ${DBMIGRATE_CMD:--up -server-ready 60s -create-db}
+    depends_on:
         - db
     networks:
       - voucher_network
