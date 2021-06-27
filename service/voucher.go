@@ -74,6 +74,9 @@ func (srv *VoucherSrv) ValidateHanlder(w http.ResponseWriter, r *http.Request) {
 	}
 	t, err := dbmodel.ValidateVoucher(srv.Ctx, vr.Email, vr.Code, srv.DB)
 	if err != nil {
+		if err.Error() == "voucher expired" {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

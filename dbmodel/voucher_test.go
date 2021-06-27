@@ -27,38 +27,42 @@ func TestValidateVoucher(t *testing.T) {
 	fixtureEmail := "test@gmail.com"
 	fixtureCode := "code"
 	tests := []struct {
-		name       string
-		givenEmail string
-		givenCode  string
-		want       sql.NullTime
-		wantErr    bool
+		name          string
+		givenEmail    string
+		givenCode     string
+		wantUsedAt    sql.NullTime
+		wantExpiredAt time.Time
+		wantErr       bool
 	}{
 		{
-			name:       "used_at is null",
-			givenEmail: fixtureEmail,
-			givenCode:  fixtureCode,
-			want:       sql.NullTime{Valid: false},
-			wantErr:    false,
+			name:          "used_at is null",
+			givenEmail:    fixtureEmail,
+			givenCode:     fixtureCode,
+			wantUsedAt:    sql.NullTime{Valid: false},
+			wantExpiredAt: time.Now().Add(25 * time.Hour),
+			wantErr:       false,
 		},
 		{
-			name:       "used_at is not null",
-			givenEmail: fixtureEmail,
-			givenCode:  fixtureCode,
-			want:       sql.NullTime{Valid: true, Time: time.Date(2021, time.June, 1, 0, 0, 0, 0, time.Local)},
-			wantErr:    false,
+			name:          "used_at is not null",
+			givenEmail:    fixtureEmail,
+			givenCode:     fixtureCode,
+			wantUsedAt:    sql.NullTime{Valid: true, Time: time.Date(2022, time.June, 1, 0, 0, 0, 0, time.Local)},
+			wantExpiredAt: time.Now().Add(25 * time.Hour),
+			wantErr:       false,
 		},
 		{
-			name:       "db error",
-			givenEmail: fixtureEmail,
-			givenCode:  fixtureCode,
-			want:       sql.NullTime{},
-			wantErr:    true,
+			name:          "db error",
+			givenEmail:    fixtureEmail,
+			givenCode:     fixtureCode,
+			wantUsedAt:    sql.NullTime{},
+			wantExpiredAt: time.Now().Add(25 * time.Hour),
+			wantErr:       true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if !tt.wantErr {
-				mock.ExpectQuery("SELECT (.+) FROM customers cus inner JOIN vouchers vo ON cus.id=vo.customer_id WHERE (.+)").WithArgs(fixtureEmail, fixtureCode).WillReturnRows(sqlmock.NewRows([]string{"used_at"}).AddRow(tt.want))
+				mock.ExpectQuery("SELECT (.+) FROM customers cus inner JOIN vouchers vo ON cus.id=vo.customer_id WHERE (.+)").WithArgs(fixtureEmail, fixtureCode).WillReturnRows(sqlmock.NewRows([]string{"used_at", "expired_at"}).AddRow(tt.wantUsedAt, tt.wantExpiredAt))
 			} else {
 				mock.ExpectQuery("SELECT (.+) FROM customers cus inner JOIN vouchers vo ON cus.id=vo.customer_id WHERE (.+)").WithArgs(fixtureEmail, fixtureCode).WillReturnError(errors.New("error"))
 			}
@@ -67,8 +71,8 @@ func TestValidateVoucher(t *testing.T) {
 				t.Errorf("ValidateVoucher() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ValidateVoucher() = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(got, tt.wantUsedAt) {
+				t.Errorf("ValidateVoucher() = %v, want %v", got, tt.wantUsedAt)
 			}
 		})
 	}

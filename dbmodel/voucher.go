@@ -24,19 +24,23 @@ type DBModelVoucher struct {
 }
 
 func ValidateVoucher(ctx context.Context, email, code string, db *sqlx.DB) (sql.NullTime, error) {
-	rows, err := db.QueryContext(ctx, "SELECT vo.used_at FROM customers cus inner JOIN vouchers vo ON cus.id=vo.customer_id WHERE cus.email=$1 AND vo.code=$2", email, code)
+	rows, err := db.QueryContext(ctx, "SELECT vo.used_at vo.expired_at FROM customers cus inner JOIN vouchers vo ON cus.id=vo.customer_id WHERE cus.email=$1 AND vo.code=$2", email, code)
 	if err != nil {
 		return sql.NullTime{}, errors.Wrapf(err, "fail to query used_at from table vouchers")
 	}
 	defer rows.Close()
-	t := sql.NullTime{}
+	usedAt := sql.NullTime{}
+	expiredAt := time.Time{}
 	if rows.Next() {
-		err := rows.Scan(&t)
+		err := rows.Scan(&usedAt, &expiredAt)
 		if err != nil {
 			return sql.NullTime{}, errors.Wrapf(err, "fail to query used_at from vouchers table")
 		}
 	}
-	return t, nil
+	if expiredAt.Before(time.Now()) {
+		return sql.NullTime{}, errors.New("voucher expired")
+	}
+	return usedAt, nil
 }
 
 func SetVoucherUsageAndGetDiscount(ctx context.Context, code string, db *sqlx.DB) (float32, error) {
