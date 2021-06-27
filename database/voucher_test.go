@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-
 	"reflect"
 	"testing"
 	"time"
@@ -146,6 +145,101 @@ func TestSetVoucherUsageAndGetDiscount(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("SetVoucherUsageAndGetDiscount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGenerateVoucher(t *testing.T) {
+	db, mock := setupSQLMock(t)
+	defer db.Close()
+	fixtureEmail := "test@gmail.com"
+	fixtureOfferName := "apple_store"
+	fixtureVoucherCode := "abcd"
+	fixtureExpiry := time.Date(2021, time.June, 1, 0, 0, 0, 0, time.Local)
+	fixtureDiscount := float32(88.8)
+
+	tests := []struct {
+		name                 string
+		givenEmail           string
+		givenOfferName       string
+		givenVoucherCode     string
+		givenExpiry          time.Time
+		givenDiscount        float32
+		wantQueryCustomerErr bool
+		wantUpsertOfferErr   bool
+		wantInsertVoucherErr bool
+	}{
+		{
+			name:             "generate voucher record successfully",
+			givenEmail:       fixtureEmail,
+			givenOfferName:   fixtureOfferName,
+			givenVoucherCode: fixtureVoucherCode,
+			givenExpiry:      fixtureExpiry,
+			givenDiscount:    fixtureDiscount,
+		},
+		{
+			name:                 "fail to query customer_id",
+			givenEmail:           fixtureEmail,
+			givenOfferName:       fixtureOfferName,
+			givenVoucherCode:     fixtureVoucherCode,
+			givenExpiry:          fixtureExpiry,
+			givenDiscount:        fixtureDiscount,
+			wantQueryCustomerErr: true,
+		},
+		{
+			name:               "fail to upsert offer",
+			givenEmail:         fixtureEmail,
+			givenOfferName:     fixtureOfferName,
+			givenVoucherCode:   fixtureVoucherCode,
+			givenExpiry:        fixtureExpiry,
+			givenDiscount:      fixtureDiscount,
+			wantUpsertOfferErr: true,
+		},
+		{
+			name:                 "fail to insert voucher",
+			givenEmail:           fixtureEmail,
+			givenOfferName:       fixtureOfferName,
+			givenVoucherCode:     fixtureVoucherCode,
+			givenExpiry:          fixtureExpiry,
+			givenDiscount:        fixtureDiscount,
+			wantInsertVoucherErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !tt.wantQueryCustomerErr {
+				mock.ExpectQuery("SELECT (.+) FROM customers WHERE (.+)").WithArgs(tt.givenEmail).WillReturnRows(sqlmock.NewRows([]string{"email"}).AddRow(1))
+			} else {
+				mock.ExpectQuery("SELECT (.+) FROM customers WHERE (.+)").WithArgs(tt.givenEmail).WillReturnError(errors.New("error"))
+			}
+			mock.ExpectBegin()
+			if !tt.wantUpsertOfferErr {
+				mock.ExpectQuery("INSERT INTO special_offers (.+) VALUES (.+) ON CONFLICT (.+) DO UPDATE SET (.+) RETURNING id").WithArgs(tt.givenOfferName, tt.givenDiscount).WillReturnRows(sqlmock.NewRows([]string{"used_at"}).AddRow(1))
+			} else {
+				mock.ExpectQuery("INSERT INTO special_offers (.+) VALUES (.+) ON CONFLICT (.+) DO UPDATE SET (.+) RETURNING id").WithArgs(tt.givenOfferName, tt.givenDiscount).WillReturnError(errors.New("error"))
+				mock.ExpectRollback()
+			}
+
+			if !tt.wantInsertVoucherErr {
+				mock.ExpectExec("INSERT INTO vouchers (.+) VALUES (.+)").WithArgs(tt.givenVoucherCode, 1, 1, tt.givenExpiry, sqlmock.AnyArg()).WillReturnResult(sqlmock.NewResult(1, 1))
+			} else {
+				mock.ExpectExec("INSERT INTO vouchers (.+) VALUES (.+)").WithArgs(tt.givenVoucherCode, 1, 1, tt.givenExpiry, sqlmock.AnyArg()).WillReturnError(errors.New("error"))
+			}
+			if !tt.wantUpsertOfferErr || !tt.wantInsertVoucherErr {
+				mock.ExpectRollback()
+			} else {
+				mock.ExpectCommit()
+			}
+			err := GenerateVoucher(context.Background(), tt.givenEmail, tt.givenOfferName, tt.givenVoucherCode, tt.givenExpiry, tt.givenDiscount, sqlx.NewDb(db, "sqlmock"))
+			if tt.wantQueryCustomerErr {
+				assert.NotNil(t, err)
+			}
+			if tt.wantUpsertOfferErr {
+				assert.NotNil(t, err)
+			}
+			if tt.wantUpsertOfferErr {
+				assert.NotNil(t, err)
 			}
 		})
 	}

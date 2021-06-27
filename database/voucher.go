@@ -72,7 +72,7 @@ func SetVoucherUsageAndGetDiscount(ctx context.Context, code string, db *sqlx.DB
 }
 
 func GenerateVoucher(ctx context.Context, email, offerName, code string, expiry time.Time, discount float32, db *sqlx.DB) error {
-	// get customer id
+	// query customer id
 	rows, err := db.QueryContext(ctx, "SELECT id FROM customers WHERE email=$1", email)
 	if err != nil {
 		return errors.Wrapf(err, "fail to find customer with email %v", email)
