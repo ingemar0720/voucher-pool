@@ -59,9 +59,9 @@ func TestValidateVoucher(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if !tt.wantErr {
-				mock.ExpectQuery("SELECT (.+) FROM customers").WithArgs(fixtureEmail, fixtureCode).WillReturnRows(sqlmock.NewRows([]string{"used_at"}).AddRow(tt.want))
+				mock.ExpectQuery("SELECT (.+) FROM customers cus inner JOIN vouchers vo ON cus.id=vo.customer_id WHERE (.+)").WithArgs(fixtureEmail, fixtureCode).WillReturnRows(sqlmock.NewRows([]string{"used_at"}).AddRow(tt.want))
 			} else {
-				mock.ExpectQuery("SELECT (.+) FROM customers").WithArgs(fixtureEmail, fixtureCode).WillReturnError(errors.New("error"))
+				mock.ExpectQuery("SELECT (.+) FROM customers cus inner JOIN vouchers vo ON cus.id=vo.customer_id WHERE (.+)").WithArgs(fixtureEmail, fixtureCode).WillReturnError(errors.New("error"))
 			}
 			got, err := ValidateVoucher(context.Background(), tt.givenEmail, tt.givenCode, sqlx.NewDb(db, "sqlmock"))
 			if (err != nil) != tt.wantErr {
@@ -115,12 +115,12 @@ func TestSetVoucherUsageAndGetDiscount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if !tt.queryErr {
-				mock.ExpectQuery("SELECT (.+) FROM special_offers").WithArgs(fixtureCode).WillReturnRows(sqlmock.NewRows([]string{"discount"}).AddRow(50.1))
+				mock.ExpectQuery("SELECT (.+) FROM special_offers so INNER JOIN vouchers vo ON so.id=vo.special_offer_id WHERE (.+)").WithArgs(fixtureCode).WillReturnRows(sqlmock.NewRows([]string{"discount"}).AddRow(50.1))
 			} else {
-				mock.ExpectQuery("SELECT (.+) FROM special_offers").WithArgs(fixtureCode).WillReturnError(errors.New("error"))
+				mock.ExpectQuery("SELECT (.+) FROM special_offers so INNER JOIN vouchers vo ON so.id=vo.special_offer_id WHERE (.+)").WithArgs(fixtureCode).WillReturnError(errors.New("error"))
 			}
 			mock.ExpectBegin()
-			mock.ExpectExec("UPDATE vouchers").WithArgs(tt.givenUsedDate.Time.Format(time.RFC3339), tt.givenCode).WillReturnResult(sqlmock.NewResult(1, 1))
+			mock.ExpectExec("UPDATE vouchers SET (.+) WHERE (.+)").WithArgs(tt.givenUsedDate.Time.Format(time.RFC3339), tt.givenCode).WillReturnResult(sqlmock.NewResult(1, 1))
 			if !tt.updateErr {
 				mock.ExpectCommit()
 			} else {
