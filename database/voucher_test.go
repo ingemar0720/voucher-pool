@@ -80,36 +80,36 @@ func TestSetVoucherUsageAndGetDiscount(t *testing.T) {
 	defer db.Close()
 	fixtureCode := "code"
 	tests := []struct {
-		name        string
-		givenCode   string
-		givenUsedAt sql.NullTime
-		want        float32
-		queryErr    bool
-		updateErr   bool
+		name          string
+		givenCode     string
+		givenUsedDate sql.NullTime
+		want          float32
+		queryErr      bool
+		updateErr     bool
 	}{
 		{
-			name:        "get discount value",
-			givenCode:   fixtureCode,
-			givenUsedAt: sql.NullTime{Valid: true, Time: time.Now()},
-			want:        50.1,
-			queryErr:    false,
-			updateErr:   false,
+			name:          "get discount value",
+			givenCode:     fixtureCode,
+			givenUsedDate: sql.NullTime{Valid: true, Time: time.Now()},
+			want:          50.1,
+			queryErr:      false,
+			updateErr:     false,
 		},
 		{
-			name:        "query error",
-			givenCode:   fixtureCode,
-			givenUsedAt: sql.NullTime{Valid: true, Time: time.Now()},
-			want:        0,
-			queryErr:    true,
-			updateErr:   false,
+			name:          "query error",
+			givenCode:     fixtureCode,
+			givenUsedDate: sql.NullTime{Valid: true, Time: time.Now()},
+			want:          0,
+			queryErr:      true,
+			updateErr:     false,
 		},
 		{
-			name:        "update error",
-			givenCode:   fixtureCode,
-			givenUsedAt: sql.NullTime{Valid: true, Time: time.Now()},
-			want:        0,
-			queryErr:    false,
-			updateErr:   true,
+			name:          "update error",
+			givenCode:     fixtureCode,
+			givenUsedDate: sql.NullTime{Valid: true, Time: time.Now()},
+			want:          0,
+			queryErr:      false,
+			updateErr:     true,
 		},
 	}
 	for _, tt := range tests {
@@ -120,7 +120,7 @@ func TestSetVoucherUsageAndGetDiscount(t *testing.T) {
 				mock.ExpectQuery("SELECT (.+) FROM special_offers").WithArgs(fixtureCode).WillReturnError(errors.New("error"))
 			}
 			mock.ExpectBegin()
-			mock.ExpectExec("UPDATE vouchers").WithArgs(tt.givenUsedAt.Time.Format(time.RFC3339), tt.givenCode).WillReturnResult(sqlmock.NewResult(1, 1))
+			mock.ExpectExec("UPDATE vouchers").WithArgs(tt.givenUsedDate.Time.Format(time.RFC3339), tt.givenCode).WillReturnResult(sqlmock.NewResult(1, 1))
 			if !tt.updateErr {
 				mock.ExpectCommit()
 			} else {
