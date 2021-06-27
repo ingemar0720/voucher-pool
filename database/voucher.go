@@ -16,11 +16,11 @@ type DBModelSpecialOffer struct {
 }
 
 type DBModelVoucher struct {
-	Code           string    `json:"code" db:"code"`
-	CustomerID     uint64    `json:"customer_id" db:"customer_id"`
-	SpecialOfferID uint64    `json:"special_offer_id" db:"special_offer_id"`
-	ExpiryDate     time.Time `json:"expired_at" db:"expired_at"`
-	UsedDate       time.Time `json:"used_at" db:"used_at"`
+	Code           string       `json:"code" db:"code"`
+	CustomerID     uint64       `json:"customer_id" db:"customer_id"`
+	SpecialOfferID uint64       `json:"special_offer_id" db:"special_offer_id"`
+	ExpiryDate     time.Time    `json:"expired_at" db:"expired_at"`
+	UsedDate       sql.NullTime `json:"used_at" db:"used_at"`
 }
 
 func ValidateVoucher(ctx context.Context, email, code string, db *sqlx.DB) (sql.NullTime, error) {
@@ -122,7 +122,7 @@ func GenerateVoucher(ctx context.Context, email, offerName, code string, expiry 
 		CustomerID:     customerID,
 		SpecialOfferID: offerID,
 		ExpiryDate:     expiry,
-		UsedDate:       time.Now(),
+		UsedDate:       sql.NullTime{Valid: false},
 	}
 	_, err = tx.NamedExecContext(ctx, "INSERT INTO vouchers (code, customer_id, special_offer_id, expired_at, used_at) VALUES (:code, :customer_id, :special_offer_id, :expired_at, :used_at)", voucher)
 	if err != nil {
