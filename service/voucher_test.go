@@ -31,7 +31,7 @@ type TestSuite struct {
 // setup test suite, prepare test db, db cleaner
 func (suite *TestSuite) SetupSuite() {
 	fmt.Println("setup suite")
-	db, err := sqlx.Connect("postgres", "postgres://user:mysecretpassword@127.0.0.1:5432/postgres_test?sslmode=disable")
+	db, err := sqlx.Connect("postgres", "postgres://user:mysecretpassword@db:5432/postgres_test?sslmode=disable")
 	if err != nil {
 		assert.Fail(suite.T(), "setup test DB fail", err)
 	}

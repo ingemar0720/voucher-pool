@@ -51,7 +51,7 @@ type GetResponse struct {
 }
 
 func New() (*sqlx.DB, error) {
-	db, err := sqlx.Connect("postgres", "postgres://user:mysecretpassword@127.0.0.1:5432/postgres?sslmode=disable")
+	db, err := sqlx.Connect("postgres", "postgres://user:mysecretpassword@db:5432/postgres?sslmode=disable")
 	if err != nil {
 		return &sqlx.DB{}, fmt.Errorf("fail to connect to db, error: %v", err)
 	}

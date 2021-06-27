@@ -11,10 +11,22 @@ services:
     restart: always
     networks:
       - voucher_network
+  dbseed:
+    depends_on:
+      - db
+      - dbmigrate
+    image: golang:1.16.0
+    volumes:
+      - .:/go/src/voucher_service
+    working_dir: /go/src/voucher_service
+    command: go run cmd/seed/main.go
+    networks:
+      - voucher_network
   go:
     depends_on:
       - db
       - dbmigrate
+      - dbseed
     image: golang:1.16.0
     ports:
       - "5000:5000"
@@ -48,6 +60,17 @@ services:
     command: ${DBMIGRATE_CMD:--up -server-ready 60s -create-db}
     depends_on:
         - db
+    networks:
+      - voucher_network
+  gotest:
+    depends_on:
+      - db
+      - dbmigratetest
+    image: golang:1.16.0
+    volumes:
+      - .:/go/src/voucher_service
+    working_dir: /go/src/voucher_service
+    command: env CGO_ENABLED=0 go test ./...
     networks:
       - voucher_network
 volumes:
