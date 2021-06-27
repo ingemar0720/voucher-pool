@@ -24,5 +24,6 @@ func main() {
 	r := chi.NewRouter()
 	r.Post("/vouchers/validate", srv.ValidateHanlder)
 	r.Post("/vouchers/generate", srv.GenerateHanlder)
+	r.Get("/vouchers", srv.GetValidVouchers)
 	log.Fatal(http.ListenAndServe(":5000", r))
 }

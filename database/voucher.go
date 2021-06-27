@@ -71,22 +71,30 @@ func SetVoucherUsageAndGetDiscount(ctx context.Context, code string, db *sqlx.DB
 	return discount, nil
 }
 
-func GenerateVoucher(ctx context.Context, email, offerName, code string, expiry time.Time, discount float32, db *sqlx.DB) error {
-	// query customer id
+func GetCustomerIDByEmail(ctx context.Context, email string, db *sqlx.DB) (uint64, error) {
 	rows, err := db.QueryContext(ctx, "SELECT id FROM customers WHERE email=$1", email)
 	if err != nil {
-		return errors.Wrapf(err, "fail to find customer with email %v", email)
+		return 0, errors.Wrapf(err, "fail to find customer with email %v", email)
 	}
 	var customerID uint64
 	if rows.Next() {
 		err := rows.Scan(&customerID)
 		if err != nil {
-			return errors.Wrapf(err, "fail to query discount from table special_offers")
+			return 0, errors.Wrapf(err, "fail to query discount from table special_offers")
 		}
 	}
 	rows.Close()
 	if customerID == 0 {
-		return errors.New("customerID shall not be 0")
+		return 0, errors.New("customerID shall not be 0")
+	}
+	return customerID, nil
+}
+
+func GenerateVoucher(ctx context.Context, email, offerName, code string, expiry time.Time, discount float32, db *sqlx.DB) error {
+	// query customer id
+	customerID, err := GetCustomerIDByEmail(ctx, email, db)
+	if err != nil {
+		return err
 	}
 
 	// upsert special_offer, so that we could update the discount of the special_offers
@@ -132,4 +140,33 @@ func GenerateVoucher(ctx context.Context, email, offerName, code string, expiry 
 		return errors.Wrapf(err, "fail to insert to voucher table")
 	}
 	return tx.Commit()
+}
+
+// return map with offer name in key and voucher code in value
+func GetVouchers(ctx context.Context, email string, db *sqlx.DB) ([]string, []string, error) {
+	var codes []string
+	var names []string
+	// query customer id
+	customerID, err := GetCustomerIDByEmail(ctx, email, db)
+	if err != nil {
+		return []string{}, []string{}, err
+	}
+
+	// select vo.code from vouchers as vo inner join special_offers as so on vo.special_offer_id=so.id where vo.customer_id=1
+	rows, err := db.QueryContext(ctx, "SELECT vo.code, so.name FROM vouchers AS vo INNER JOIN special_offers AS so ON vo.special_offer_id=so.id WHERE vo.customer_id=$1 and vo.used_at is NULL", customerID)
+	if err != nil {
+		return []string{}, []string{}, errors.Wrapf(err, "fail to query discount from table special_offers")
+	}
+	for rows.Next() {
+		var code string
+		var name string
+		err := rows.Scan(&code, &name)
+		if err != nil {
+			return []string{}, []string{}, errors.Wrapf(err, "fail to query discount from table special_offers")
+		}
+		codes = append(codes, code)
+		names = append(names, name)
+	}
+	rows.Close()
+	return codes, names, nil
 }

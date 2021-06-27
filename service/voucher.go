@@ -26,6 +26,10 @@ type ValidateRequest struct {
 	Email string `json:"email"`
 }
 
+type ListRequest struct {
+	Email string `json:"email"`
+}
+
 type GenerateRequest struct {
 	Email     string    `json:"email"`
 	OfferName string    `json:"offer_name"`
@@ -33,8 +37,17 @@ type GenerateRequest struct {
 	Expiry    time.Time `json:"expiry"`
 }
 
-type DiscountResponse struct {
+type ValidateResponse struct {
 	Discount float32 `json:"discount"`
+}
+
+type GenerateResponse struct {
+	Code string `json:"code"`
+}
+
+type GetResponse struct {
+	Code      string `json:"code"`
+	OfferName string `json:"offer_name"`
 }
 
 func New() (*sqlx.DB, error) {
@@ -75,12 +88,12 @@ func (srv *VoucherSrv) ValidateHanlder(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		discountResp := DiscountResponse{
+		validateResp := ValidateResponse{
 			Discount: discount,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(discountResp)
+		json.NewEncoder(w).Encode(validateResp)
 		return
 	}
 }
@@ -114,6 +127,9 @@ func (srv *VoucherSrv) GenerateHanlder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(GenerateResponse{Code: code})
 }
 
 //https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-go
@@ -124,4 +140,42 @@ func RandStringBytes(n int) string {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(b)
+}
+
+func (srv *VoucherSrv) GetValidVouchers(w http.ResponseWriter, r *http.Request) {
+	lr := ListRequest{}
+	err := json.NewDecoder(r.Body).Decode(&lr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	//validate input
+	_, err = mail.ParseAddress(lr.Email)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	codes, offerNames, err := database.GetVouchers(r.Context(), lr.Email, srv.DB)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(codes) != len(offerNames) {
+		if err != nil {
+			http.Error(w, "number of column of voucher code not equal to number of columns of specail_offer name", http.StatusInternalServerError)
+			return
+		}
+	}
+	var vouchers []GetResponse
+	l := len(codes)
+	for i := 0; i < l; i++ {
+		vouchers = append(vouchers, GetResponse{Code: codes[i], OfferName: offerNames[i]})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(vouchers)
 }
